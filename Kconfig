@@ -1,0 +1,11 @@
+menu "Application"
+
+config APP_HEARTBEAT_INTERVAL_MS
+	int "Heartbeat log interval (ms)"
+	default 1000
+	help
+	  Interval between heartbeat log messages printed by main().
+
+endmenu
+
+source "Kconfig.zephyr"

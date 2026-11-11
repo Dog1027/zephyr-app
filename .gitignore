@@ -1,0 +1,29 @@
+# Build output (west build -d build)
+build/
+build-*/
+
+# Firmware artifacts outside build/
+*.elf
+*.bin
+*.hex
+*.map
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Editors / IDEs
+.vscode/
+*.code-workspace
+.idea/
+cmake-build-*/
+*.swp
+*.swo
+*~
+
+# Misc
+*.log
+*.tmp
+*.orig
+*.bak
