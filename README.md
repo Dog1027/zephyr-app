@@ -10,7 +10,7 @@ build / flash / monitor.
 ```
 .
 ├── .devcontainer/
-│   ├── devcontainer.json      # Workspace volume, serial port passthrough
+│   ├── devcontainer.json      # Workspace volume, host /dev mount for serial ports
 │   ├── Dockerfile             # zephyr-build image + just
 │   └── setup-west.sh          # west init -l / update / blobs fetch (runs on container create)
 ├── app/                       # Zephyr application
@@ -57,10 +57,13 @@ The Zephyr SDK, west and just are all provided by the container.
    > `/dev/ttyUSB*`. Chips with native USB-Serial-JTAG (ESP32-C3 / S3 / C6, ...) appear as
    > `/dev/ttyACM*`, so the `/dev/ttyUSB0` default won't find them.
 
-2. Plug in the board, then open the repo in VS Code and choose **Reopen in Container**.
+2. Open the repo in VS Code and choose **Reopen in Container**.
 
-   > The device must be connected when the container starts, otherwise the container fails to
-   > start. If you plug it in later, rebuild / restart the container.
+   > The host's `/dev` is mounted live at `/host/dev`, and `ZEPHYR_PORT` inside the container
+   > points there (e.g. `/host/dev/serial/by-id/...`). The board can be plugged in after the
+   > container starts, and USB-native ports that re-enumerate after a reset keep working.
+   > This exposes all host device nodes to the container; access is limited to what your host
+   > user can open.
 
 3. On first creation, `setup-west.sh` runs `west init -l`, `west update` and
    `west blobs fetch`. This takes a while.
