@@ -5,12 +5,13 @@
 		"dockerfile": "Dockerfile"
 	},
 
-	// /workdir is the west workspace (zephyr + modules) in a named volume shared by
-	// all projects; each project is bind-mounted into it as /workdir/<repo>.
+	// /workdir is this project's west workspace (zephyr + modules), kept in a
+	// per-project named volume so it survives container rebuilds.
+	// This repo is the manifest repository, bind-mounted as /workdir/<repo>.
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workdir/${localWorkspaceFolderBasename},type=bind",
 	"workspaceFolder": "/workdir/${localWorkspaceFolderBasename}",
 	"mounts": [
-		"source=zephyr-workspace,target=/workdir,type=volume"
+		"source=${localWorkspaceFolderBasename}-west,target=/workdir,type=volume"
 	],
 
 	// Serial port for `just flash` / `just monitor`, taken from the host's ZEPHYR_PORT
@@ -23,11 +24,9 @@
 		"--group-add=keep-groups"
 	],
 	"containerEnv": {
-		"ZEPHYR_PORT": "${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}",
-		// Modules this project needs from the shared workspace (comma separated)
-		"WORKSPACE_MODULES": "hal_espressif"
+		"ZEPHYR_PORT": "${localEnv:ZEPHYR_PORT:/dev/ttyUSB0}"
 	},
 
-	// Create or join the shared workspace: west init (first time) + module filter + update + blobs
+	// west init -l (first time) + west update + blobs fetch
 	"postCreateCommand": ".devcontainer/setup-west.sh"
 }

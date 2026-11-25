@@ -1,7 +1,8 @@
 # Zephyr App Template
 
-A minimal Zephyr application template. Projects created from it share one west workspace
-(Zephyr + modules) inside a dev container, and use [just](https://just.systems) for
+A minimal Zephyr application template. It uses the west T2 (star) topology — this repo is the
+manifest repository, so each project has its own workspace and pins its own Zephyr version —
+with a dev container for the toolchain and [just](https://just.systems) for
 build / flash / monitor.
 
 ## Layout
@@ -9,9 +10,9 @@ build / flash / monitor.
 ```
 .
 ├── .devcontainer/
-│   ├── devcontainer.json      # Shared workspace volume, serial port, WORKSPACE_MODULES
+│   ├── devcontainer.json      # Workspace volume, serial port passthrough
 │   ├── Dockerfile             # zephyr-build image + just
-│   └── setup-west.sh          # Create / join the shared workspace (runs on container create)
+│   └── setup-west.sh          # west init -l / update / blobs fetch (runs on container create)
 ├── app/                       # Zephyr application
 │   ├── boards/                # Board-specific files, applied automatically by Zephyr
 │   │   └── esp32_devkitc_procpu.overlay
@@ -21,6 +22,7 @@ build / flash / monitor.
 │   ├── Kconfig                # Application options (CONFIG_APP_*)
 │   ├── prj.conf               # Common Kconfig settings
 │   └── VERSION                # Application version -> <zephyr/app_version.h>
+├── west.yml                   # West manifest: Zephyr revision + modules (name-allowlist)
 ├── zephyr.just                # Shared, board-agnostic recipes
 └── justfile                   # Per-project settings: board, port, baud, flash/monitor
 ```
@@ -56,37 +58,26 @@ The Zephyr SDK, west and just are all provided by the container.
    > The device must be connected when the container starts, otherwise the container fails to
    > start. If you plug it in later, rebuild / restart the container.
 
-3. On container creation, `setup-west.sh` creates the shared workspace if it doesn't exist yet
-   (the first time this takes a while), adds this project's modules, then runs `west update`
-   and `west blobs fetch`.
+3. On first creation, `setup-west.sh` runs `west init -l`, `west update` and
+   `west blobs fetch`. This takes a while.
 
-## Shared west workspace
+## West workspace
 
-All projects use the same named volume, `zephyr-workspace`, mounted at `/workdir`. Each
-project is bind-mounted into it, so `west` finds the workspace from the project directory:
+Each project has its own workspace. Inside the container, `/workdir` is that workspace, stored
+in a per-project named volume (`<repo folder name>-west`) so it survives container rebuilds.
+The repo is bind-mounted into it and is the manifest repository:
 
 ```
-/workdir/                  # named volume: zephyr-workspace
-├── .west/                 # manifest = zephyr/west.yml
+/workdir/                  # named volume: <repo>-west
+├── .west/                 # manifest = <repo>/west.yml
 ├── zephyr/
-├── modules/hal/espressif/ # only modules some project asked for
-├── project-a/             # bind mount
-└── project-b/             # bind mount
+├── modules/hal/espressif/
+└── <repo>/                # this repo (bind mount)
 ```
 
-- **Manifest:** Zephyr's own `west.yml`. Projects don't have a `west.yml`.
-- **Zephyr version:** shared by every project. `ZEPHYR_REVISION` in `setup-west.sh` is only
-  used when the workspace is first created; if an existing workspace is at a different
-  revision, setup prints a warning and leaves it alone.
-- **Modules:** each project lists what it needs in `WORKSPACE_MODULES` in
-  `.devcontainer/devcontainer.json`. Setup adds them to the workspace's
-  `manifest.project-filter`, so the workspace only downloads modules some project uses.
-- **Upgrading Zephyr** affects every project:
-
-  ```sh
-  cd /workdir/zephyr && git fetch origin <rev> && git checkout FETCH_HEAD
-  west update && west blobs fetch
-  ```
+- **Zephyr version and modules** are pinned in `west.yml`, tracked in git with the project.
+- **Upgrading Zephyr:** change `revision` in `west.yml`, then run `west update && west blobs fetch`
+  and `just rebuild`. Other projects are not affected.
 
 ## Usage
 
@@ -123,14 +114,14 @@ into the signed image header and used for upgrade / downgrade decisions.
 
 ## Starting a new project from this template
 
-1. Copy the repo. The folder name is used as its path inside the workspace (`/workdir/<name>`),
+1. Copy the repo. The folder name is used for the container workspace path and volume name,
    so it must be unique across your projects.
 2. Edit `justfile`: `board`, `baud`, `flash_args`, `monitor`.
 3. Set `ZEPHYR_PORT` on the host for your board's serial port.
 4. Put board-specific `.overlay` / `.conf` files in `app/boards/`.
    The file name is the board target with `/` replaced by `_`; the SoC part can be dropped when it
    repeats the board name, e.g. `esp32_devkitc/esp32/procpu` → `esp32_devkitc_procpu`.
-5. When switching SoC families, set `WORKSPACE_MODULES` in `.devcontainer/devcontainer.json`
-   (e.g. `hal_nordic`, `hal_stm32`, plus any other modules such as `cmsis_6`), then rebuild the
-   container.
+5. When switching SoC families, add the matching modules to `name-allowlist` in `west.yml`
+   (e.g. `hal_nordic`, `hal_stm32`, plus any others such as `cmsis_6`), then run `west update`.
+   `setup-west.sh` fetches blobs for whatever modules are listed.
 6. Update `app/VERSION`.
