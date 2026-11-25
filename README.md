@@ -41,32 +41,23 @@ The Zephyr SDK, west and just are all provided by the container.
 
 ## Getting started
 
-1. Set the serial port of your board on the **host**, preferably a stable
-   `/dev/serial/by-id/...` path. If unset, `/dev/ttyUSB0` is used.
+1. Open the repo in VS Code and choose **Reopen in Container**.
 
-   ```sh
-   # fish
-   set -Ux ZEPHYR_PORT /dev/serial/by-id/<your-device>
-   # bash / zsh
-   export ZEPHYR_PORT=/dev/serial/by-id/<your-device>
-   ```
+2. On first creation, `setup-west.sh` runs `west init -l`, `west update` and
+   `west blobs fetch`. This takes a while.
 
-   VS Code reads this when it starts, so restart VS Code after setting it.
+3. Set the serial port in `justfile` (`port`). The host's `/dev` is mounted live at
+   `/host/dev` inside the container, so use a `/host/dev/...` path, preferably the stable
+   `/host/dev/serial/by-id/...` one (list them with `ls /host/dev/serial/by-id/`).
+   The default is `/host/dev/ttyUSB0`. For a one-off override: `just port=/host/dev/ttyACM0 flash`.
 
    > Boards with a USB-UART bridge (CP210x / CH340, e.g. ESP32-DevKitC) appear as
-   > `/dev/ttyUSB*`. Chips with native USB-Serial-JTAG (ESP32-C3 / S3 / C6, ...) appear as
-   > `/dev/ttyACM*`, so the `/dev/ttyUSB0` default won't find them.
+   > `ttyUSB*`. Chips with native USB-Serial-JTAG (ESP32-C3 / S3 / C6, ...) appear as
+   > `ttyACM*`, so the `ttyUSB0` default won't find them.
 
-2. Open the repo in VS Code and choose **Reopen in Container**.
-
-   > The host's `/dev` is mounted live at `/host/dev`, and `ZEPHYR_PORT` inside the container
-   > points there (e.g. `/host/dev/serial/by-id/...`). The board can be plugged in after the
-   > container starts, and USB-native ports that re-enumerate after a reset keep working.
-   > This exposes all host device nodes to the container; access is limited to what your host
-   > user can open.
-
-3. On first creation, `setup-west.sh` runs `west init -l`, `west update` and
-   `west blobs fetch`. This takes a while.
+   > Because `/dev` is mounted live, the board can be plugged in after the container starts,
+   > and USB-native ports that re-enumerate after a reset keep working. This exposes all host
+   > device nodes to the container; access is limited to what your host user can open.
 
 ## West workspace
 
@@ -126,13 +117,13 @@ into the signed image header and used for upgrade / downgrade decisions.
 
 1. Copy the repo. The folder name is used for the container workspace path and volume name,
    so it must be unique across your projects.
-2. Edit `justfile`: `board`, `baud`, `flash_args`, `monitor`.
-3. Set `ZEPHYR_PORT` on the host for your board's serial port
-   (`/dev/ttyUSB*` for USB-UART bridges, `/dev/ttyACM*` for native USB-Serial-JTAG chips).
-4. Put board-specific `.overlay` / `.conf` files in `app/boards/`.
+2. Edit `justfile`: `board`, `port`, `baud`, `flash_args`, `monitor`
+   (`port`: `/host/dev/ttyUSB*` for USB-UART bridges, `/host/dev/ttyACM*` for native
+   USB-Serial-JTAG chips, or a `/host/dev/serial/by-id/...` path).
+3. Put board-specific `.overlay` / `.conf` files in `app/boards/`.
    The file name is the board target with `/` replaced by `_`; the SoC part can be dropped when it
    repeats the board name, e.g. `esp32_devkitc/esp32/procpu` → `esp32_devkitc_procpu`.
-5. When switching SoC families, add the matching modules to `name-allowlist` in `west.yml`
+4. When switching SoC families, add the matching modules to `name-allowlist` in `west.yml`
    (e.g. `hal_nordic`, `hal_stm32`, plus any others such as `cmsis_6`), then run `west update`.
    `setup-west.sh` fetches blobs for whatever modules are listed.
-6. Update `app/VERSION`.
+5. Update `app/VERSION`.
