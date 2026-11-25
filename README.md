@@ -53,6 +53,10 @@ The Zephyr SDK, west and just are all provided by the container.
 
    VS Code reads this when it starts, so restart VS Code after setting it.
 
+   > Boards with a USB-UART bridge (CP210x / CH340, e.g. ESP32-DevKitC) appear as
+   > `/dev/ttyUSB*`. Chips with native USB-Serial-JTAG (ESP32-C3 / S3 / C6, ...) appear as
+   > `/dev/ttyACM*`, so the `/dev/ttyUSB0` default won't find them.
+
 2. Plug in the board, then open the repo in VS Code and choose **Reopen in Container**.
 
    > The device must be connected when the container starts, otherwise the container fails to
@@ -76,8 +80,11 @@ The repo is bind-mounted into it and is the manifest repository:
 ```
 
 - **Zephyr version and modules** are pinned in `west.yml`, tracked in git with the project.
+- **Toolchain** comes from the pinned `zephyr-build` image in `.devcontainer/Dockerfile`.
+  Its Zephyr SDK must match `zephyr/SDK_VERSION` of the pinned Zephyr revision.
 - **Upgrading Zephyr:** change `revision` in `west.yml`, then run `west update && west blobs fetch`
-  and `just rebuild`. Other projects are not affected.
+  and `just rebuild`. If the new revision's `SDK_VERSION` changed, also bump the `zephyr-build`
+  tag in `.devcontainer/Dockerfile` and rebuild the container. Other projects are not affected.
 
 ## Usage
 
@@ -117,7 +124,8 @@ into the signed image header and used for upgrade / downgrade decisions.
 1. Copy the repo. The folder name is used for the container workspace path and volume name,
    so it must be unique across your projects.
 2. Edit `justfile`: `board`, `baud`, `flash_args`, `monitor`.
-3. Set `ZEPHYR_PORT` on the host for your board's serial port.
+3. Set `ZEPHYR_PORT` on the host for your board's serial port
+   (`/dev/ttyUSB*` for USB-UART bridges, `/dev/ttyACM*` for native USB-Serial-JTAG chips).
 4. Put board-specific `.overlay` / `.conf` files in `app/boards/`.
    The file name is the board target with `/` replaced by `_`; the SoC part can be dropped when it
    repeats the board name, e.g. `esp32_devkitc/esp32/procpu` → `esp32_devkitc_procpu`.
