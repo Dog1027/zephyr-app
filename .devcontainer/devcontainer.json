@@ -11,7 +11,8 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workdir/${localWorkspaceFolderBasename},type=bind",
 	"workspaceFolder": "/workdir/${localWorkspaceFolderBasename}",
 	"mounts": [
-		"source=${localWorkspaceFolderBasename}-west,target=/workdir,type=volume"
+		"source=${localWorkspaceFolderBasename}-west,target=/workdir,type=volume",
+		"source=${localEnv:HOME}/.ssh,target=/tmp/host-ssh,type=bind,readonly"
 	],
 
 	// Serial ports for `just flash` / `just monitor` (port is set in justfile).
@@ -27,5 +28,8 @@
 	],
 
 	// west init -l (first time) + west update + blobs fetch
-	"postCreateCommand": ".devcontainer/setup-west.sh"
+	"postCreateCommand": {
+		"setup-west": ".devcontainer/setup-west.sh",
+		"setup-ssh": ".devcontainer/setup-ssh.sh"
+	}
 }
